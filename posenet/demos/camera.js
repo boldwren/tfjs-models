@@ -432,7 +432,7 @@ function detectPoseInRealTime(video, net) {
     // and draw the resulting skeleton and keypoints if over certain confidence
     // scores
     const goodPoses = poses.filter(({score}) => score >= minPoseConfidence)
-    goodPoses.forEach(({score, keypoints}) => {
+    goodPoses.forEach(({keypoints}) => {
       if (guiState.output.showPoints) {
         drawKeypoints(keypoints, minPartConfidence, ctx);
       }
