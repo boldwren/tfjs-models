@@ -45,7 +45,7 @@ async function setupCamera() {
     window.videos = videos;
   }
   // only show videos we have no data about
-  const videoUrls = Object.keys(videos).filter(k => Object.keys(videos[k]).length);
+  const videoUrls = Object.keys(videos).filter(k => Object.keys(videos[k]).length === 0);
   const video = document.getElementById('video');
   video.width = videoWidth;
   video.height = videoHeight;
