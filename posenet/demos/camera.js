@@ -21,8 +21,12 @@ import Stats from 'stats.js';
 import {drawBoundingBox, drawKeypoints, drawSkeleton, isMobile, toggleLoadingUI, tryResNetButtonName, tryResNetButtonText, updateTryResNetButtonDatGuiCss} from './demo_util';
 
 const videoWidth = 600;
-const videoHeight = 500;
+const videoHeight = 300;
 const stats = new Stats();
+
+// holds {video_url: {time: KeyPoints}}
+let videos = null;
+let currentVideo = null;
 
 /**
  * Loads a the camera to be used in the demo
@@ -34,20 +38,21 @@ async function setupCamera() {
         'Browser API navigator.mediaDevices.getUserMedia not available');
   }
 
+  if (!videos) {
+    const response = await fetch('/videos/index.json');
+    const index = await response.json();
+    videos = index.videos;
+    window.videos = videos;
+  }
+  const videoUrls = Object.keys(videos);
   const video = document.getElementById('video');
   video.width = videoWidth;
   video.height = videoHeight;
 
-  const mobile = isMobile();
-  const stream = await navigator.mediaDevices.getUserMedia({
-    'audio': false,
-    'video': {
-      facingMode: 'user',
-      width: mobile ? undefined : videoWidth,
-      height: mobile ? undefined : videoHeight,
-    },
-  });
-  video.srcObject = stream;
+  currentVideo = videoUrls[Math.floor(videoUrls.length * Math.random())];
+  video.src = currentVideo;
+  video.currentTime = 20;
+
 
   return new Promise((resolve) => {
     video.onloadedmetadata = () => {
@@ -60,6 +65,17 @@ async function loadVideo() {
   const video = await setupCamera();
   video.play();
 
+  video.addEventListener('ended', (event) => {
+    console.log('Video stopped');
+    
+    const prev = JSON.parse(window.localStorage.getItem(currentVideo) || '{}');
+    window.localStorage.setItem(
+      currentVideo, JSON.stringify({
+        ...prev,
+        ...videos[currentVideo]
+      }))
+    loadVideo();
+  });
   return video;
 }
 
@@ -87,7 +103,7 @@ const guiState = {
     minPartConfidence: 0.5,
   },
   multiPoseDetection: {
-    maxPoseDetections: 5,
+    maxPoseDetections: 6,
     minPoseConfidence: 0.15,
     minPartConfidence: 0.1,
     nmsRadius: 30.0,
@@ -293,7 +309,7 @@ function detectPoseInRealTime(video, net) {
   // original image and then just flip the keypoints' x coordinates. If instead
   // we flip the image, then correcting left-right keypoint pairs requires a
   // permutation on all the keypoints.
-  const flipPoseHorizontal = true;
+  const flipPoseHorizontal = false;
 
   canvas.width = videoWidth;
   canvas.height = videoHeight;
@@ -410,38 +426,32 @@ function detectPoseInRealTime(video, net) {
 
     ctx.clearRect(0, 0, videoWidth, videoHeight);
 
-    if (guiState.output.showVideo) {
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.translate(-videoWidth, 0);
-      ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
-      ctx.restore();
-    }
-
     // For each pose (i.e. person) detected in an image, loop through the poses
     // and draw the resulting skeleton and keypoints if over certain confidence
     // scores
-    poses.forEach(({score, keypoints}) => {
-      if (score >= minPoseConfidence) {
-        if (guiState.output.showPoints) {
-          drawKeypoints(keypoints, minPartConfidence, ctx);
-        }
-        if (guiState.output.showSkeleton) {
-          drawSkeleton(keypoints, minPartConfidence, ctx);
-        }
-        if (guiState.output.showBoundingBox) {
-          drawBoundingBox(keypoints, ctx);
-        }
+    const goodPoses = poses.filter(({score}) => score >= minPoseConfidence)
+    goodPoses.forEach(({score, keypoints}) => {
+      if (guiState.output.showPoints) {
+        drawKeypoints(keypoints, minPartConfidence, ctx);
+      }
+      if (guiState.output.showSkeleton) {
+        drawSkeleton(keypoints, minPartConfidence, ctx);
+      }
+      if (guiState.output.showBoundingBox) {
+        drawBoundingBox(keypoints, ctx);
       }
     });
+
+    videos[currentVideo][video.currentTime] = goodPoses;
 
     // End monitoring code for frames per second
     stats.end();
 
-    requestAnimationFrame(poseDetectionFrame);
+    // TODO: if video element is not playing then register a listener for a play
+    // event instead, to avoid wasting cpu.
+    requestAnimationFrame(() => setTimeout(poseDetectionFrame, 10000));
   }
-
-  poseDetectionFrame();
+  setTimeout(poseDetectionFrame, 1000)
 }
 
 /**
