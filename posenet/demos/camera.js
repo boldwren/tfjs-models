@@ -41,10 +41,11 @@ async function setupCamera() {
   if (!videos) {
     const response = await fetch('/videos/index.json');
     const index = await response.json();
-    videos = index.videos;
+    videos = {...index.videos, ...Object.fromEntries(Object.entries(window.localStorage).map(([k, v]) => [k, JSON.parse(v)]).sort())};
     window.videos = videos;
   }
-  const videoUrls = Object.keys(videos);
+  // only show videos we have no data about
+  const videoUrls = Object.keys(videos).filter(k => Object.keys(videos[k]).length);
   const video = document.getElementById('video');
   video.width = videoWidth;
   video.height = videoHeight;
@@ -67,7 +68,8 @@ async function loadVideo() {
 
   video.addEventListener('ended', (event) => {
     console.log('Video stopped');
-    
+    // To dump localstorage, use:
+    // Object.fromEntries(Object.entries(window.localStorage).map(([k, v]) => [k, JSON.parse(v)]).sort())
     const prev = JSON.parse(window.localStorage.getItem(currentVideo) || '{}');
     window.localStorage.setItem(
       currentVideo, JSON.stringify({
