@@ -17,6 +17,7 @@
     "watch": "cross-env NODE_ENV=development parcel index.html --no-hmr --open ",
     "build": "cross-env NODE_ENV=production parcel build index.html --public-url ./",
     "build-camera": "cross-env NODE_ENV=production parcel build camera.html --public-url ./",
+    "test": "ts-node run_tests.ts",
     "lint": "eslint ."
   },
   "browser": {
@@ -34,7 +35,10 @@
     "dat.gui": "^0.7.2",
     "eslint": "^4.19.1",
     "eslint-config-google": "^0.9.1",
+    "jasmine": "^3.2.0",
+    "jasmine-core": "~3.1.0",
     "parcel-bundler": "~1.10.3",
+    "ts-node": "~5.0.0",
     "yalc": "~1.0.0-pre.27"
   },
   "eslintConfig": {
