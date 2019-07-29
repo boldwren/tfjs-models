@@ -21,7 +21,7 @@
     "experimentalDecorators": true
   },
   "include": [
-    "src/"
+    "src/", "demos/resnet_test.ts", "demoutils_test.ts"
   ],
   "exclude": [
     "node_modules/",

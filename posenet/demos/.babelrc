@@ -1,19 +1,23 @@
 {
   "presets": [
+    "@babel/preset-typescript",
     [
-      "env",
+      "@babel/env",
       {
-        "esmodules": false,
         "targets": {
           "browsers": [
             "> 3%"
           ]
-        }
+        },
+
+        "modules":  "cjs"
       }
-    ]
+    ],
   ],
     "plugins": [
-      ["transform-runtime", {"polyfill": false}],
-      "babel-plugin-syntax-object-rest-spread",
+      ["@babel/transform-runtime", {}],
+      "@babel/plugin-proposal-object-rest-spread",
+      "@babel/plugin-proposal-export-namespace-from",
+      "@babel/transform-modules-commonjs"
     ]
 }

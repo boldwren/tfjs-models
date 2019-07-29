@@ -85,7 +85,8 @@
     </div>
     <div id='main' style='display:none'>
         <video id="video" playsinline controls style="
-            position: absolute
+            position: absolute;
+            display:none;
         ">
         </video>
         <canvas id="output" style="
@@ -93,6 +94,9 @@
             pointer-events: none;
         "/>
     </div>
+    <!-- <video id="preview" playsinline controls style="
+        margin-top: 300px;
+    "></video> -->
     <script src="camera.js"></script>
 </body>
 

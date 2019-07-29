@@ -27,6 +27,36 @@ const stats = new Stats();
 // holds {video_url: {time: KeyPoints}}
 let videos = null;
 let currentVideo = null;
+let videoSegments = null
+
+async function previewRandomVideoSegment() {
+  const preview = document.getElementById('preview');
+  if (!videoSegments) {
+    videoSegments = [];
+    for (const url in videos) {
+      for (const t in videos[url]) {
+        if (videos[url][t].length) {
+          videoSegments.push([url, t])
+        }
+      }
+    }
+  } 
+  const [url, t] = videoSegments[Math.floor(videoSegments.length * Math.random())];
+  preview.width = videoWidth;
+  preview.height = videoHeight;
+  
+  preview.src = url;
+  preview.currentTime = parseFloat(t);
+
+  await new Promise((resolve) => {
+    preview.onloadedmetadata = () => {
+      resolve();
+    };
+  });
+  preview.play();
+  // TODO: also render the videos[url][t] features on a canvas on top of the
+  // preview element.
+}
 
 /**
  * Loads a the camera to be used in the demo
@@ -443,9 +473,10 @@ function detectPoseInRealTime(video, net) {
         drawBoundingBox(keypoints, ctx);
       }
     });
-
-    videos[currentVideo][video.currentTime] = goodPoses;
-
+    if (goodPoses.length) {
+      videos[currentVideo][video.currentTime] = goodPoses;
+      // previewRandomVideoSegment()
+    }
     // End monitoring code for frames per second
     stats.end();
 
