@@ -39,9 +39,9 @@ export function isMobile() {
 }
 
 function setDatGuiPropertyCss(propertyText, liCssString, spanCssString = '') {
-  var spans = document.getElementsByClassName('property-name');
-  for (var i = 0; i < spans.length; i++) {
-    var text = spans[i].textContent || spans[i].innerText;
+  const spans = document.getElementsByClassName('property-name');
+  for (const i = 0; i < spans.length; i++) {
+    const text = spans[i].textContent || spans[i].innerText;
     if (text == propertyText) {
       spans[i].parentNode.parentNode.style = liCssString;
       if (spanCssString !== '') {
@@ -53,15 +53,20 @@ function setDatGuiPropertyCss(propertyText, liCssString, spanCssString = '') {
 
 export function updateTryResNetButtonDatGuiCss() {
   setDatGuiPropertyCss(
-      tryResNetButtonText, tryResNetButtonBackgroundCss,
-      tryResNetButtonTextCss);
+    tryResNetButtonText,
+    tryResNetButtonBackgroundCss,
+    tryResNetButtonTextCss,
+  );
 }
 
 /**
  * Toggles between the loading UI and the main canvas UI.
  */
 export function toggleLoadingUI(
-    showLoadingUI, loadingDivId = 'loading', mainDivId = 'main') {
+  showLoadingUI,
+  loadingDivId = 'loading',
+  mainDivId = 'main',
+) {
   if (showLoadingUI) {
     document.getElementById(loadingDivId).style.display = 'block';
     document.getElementById(mainDivId).style.display = 'none';
@@ -98,13 +103,19 @@ export function drawSegment([ay, ax], [by, bx], color, scale, ctx) {
  * Draws a pose skeleton by looking up all adjacent keypoints/joints
  */
 export function drawSkeleton(keypoints, minConfidence, ctx, scale = 1) {
-  const adjacentKeyPoints =
-      posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+  const adjacentKeyPoints = posenet.getAdjacentKeyPoints(
+    keypoints,
+    minConfidence,
+  );
 
   adjacentKeyPoints.forEach((keypoints) => {
     drawSegment(
-        toTuple(keypoints[0].position), toTuple(keypoints[1].position), color,
-        scale, ctx);
+      toTuple(keypoints[0].position),
+      toTuple(keypoints[1].position),
+      color,
+      scale,
+      ctx,
+    );
   });
 }
 
@@ -133,8 +144,11 @@ export function drawBoundingBox(keypoints, ctx) {
   const boundingBox = posenet.getBoundingBox(keypoints);
 
   ctx.rect(
-      boundingBox.minX, boundingBox.minY, boundingBox.maxX - boundingBox.minX,
-      boundingBox.maxY - boundingBox.minY);
+    boundingBox.minX,
+    boundingBox.minY,
+    boundingBox.maxX - boundingBox.minX,
+    boundingBox.maxY - boundingBox.minY,
+  );
 
   ctx.strokeStyle = boundingBoxColor;
   ctx.stroke();
@@ -212,9 +226,17 @@ function drawPoints(ctx, points, radius, color) {
  * https://medium.com/tensorflow/real-time-human-pose-estimation-in-the-browser-with-tensorflow-js-7dd0bc881cd5
  */
 export function drawOffsetVectors(
-    heatMapValues, offsets, outputStride, scale = 1, ctx) {
-  const offsetPoints =
-      posenet.singlePose.getOffsetPoints(heatMapValues, outputStride, offsets);
+  heatMapValues,
+  offsets,
+  outputStride,
+  scale = 1,
+  ctx,
+) {
+  const offsetPoints = posenet.singlePose.getOffsetPoints(
+    heatMapValues,
+    outputStride,
+    offsets,
+  );
 
   const heatmapData = heatMapValues.buffer().values;
   const offsetPointsData = offsetPoints.buffer().values;
@@ -226,6 +248,11 @@ export function drawOffsetVectors(
     const offsetPointX = offsetPointsData[i + 1];
 
     drawSegment(
-        [heatmapY, heatmapX], [offsetPointY, offsetPointX], color, scale, ctx);
+      [heatmapY, heatmapX],
+      [offsetPointY, offsetPointX],
+      color,
+      scale,
+      ctx,
+    );
   }
 }
