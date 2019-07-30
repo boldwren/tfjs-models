@@ -1,23 +1,4 @@
-// Copy-pasta from keypoints.ts
-const partNames = [
-  'nose',
-  'leftEye',
-  'rightEye',
-  'leftEar',
-  'rightEar',
-  'leftShoulder',
-  'rightShoulder',
-  'leftElbow',
-  'rightElbow',
-  'leftWrist',
-  'rightWrist',
-  'leftHip',
-  'rightHip',
-  'leftKnee',
-  'rightKnee',
-  'leftAnkle',
-  'rightAnkle',
-];
+import {weightedDistanceMatching} from './demo_util';
 
 const frameA = [
   {
@@ -589,46 +570,6 @@ const frameB = [
     ],
   },
 ];
-
-// TODO: This is horribly inefficient. There has to be a better way to do this
-function fillMissing(keypoints) {
-  const indexed = {};
-  for (const point of keypoints) {
-    indexed[point.part] = point;
-  }
-
-  return partNames.map(
-    (part) =>
-      indexed[part] || {
-        score: 0,
-        part: part,
-        position: {x: 0, y: 0},
-      },
-  );
-}
-
-function weightedDistanceMatching(poseF, poseG) {
-  let confidenceSumF = 0;
-  let weightedDistanceSum = 0;
-  for (let k = 1; k < poseF.length; k++) {
-    const {
-      score: Fc,
-      part: partF,
-      position: {x: Fx, y: Fy},
-    } = poseF[k];
-    const {
-      score: Gc, // :( confidence about G's positions is ignored. This makes
-      // distance(F, G) != distance(G, F)
-      part: partG,
-      position: {x: Gx, y: Gy},
-    } = poseG[k];
-    console.assert(partF == partG);
-    confidenceSumF += Fc * Gc;
-    weightedDistanceSum += Fc * Gc * (Math.abs(Fx - Gx) + Math.abs(Fy - Gy));
-  }
-
-  return (1 / confidenceSumF) * weightedDistanceSum;
-}
 
 describe('weightedDistanceMatching', () => {
   it('doesnt crash', () => {
