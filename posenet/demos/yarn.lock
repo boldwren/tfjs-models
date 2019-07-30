@@ -697,6 +697,11 @@
     "@tensorflow/tfjs-data" "1.1.2"
     "@tensorflow/tfjs-layers" "1.1.2"
 
+"@types/dat.gui@^0.7.3":
+  version "0.7.3"
+  resolved "https://registry.yarnpkg.com/@types/dat.gui/-/dat.gui-0.7.3.tgz#105bf21b31ab07d9b11684b9b48c76034aeea5a4"
+  integrity sha512-uU5tYMquFLLk2Yq6p2jjbR/iZkcM0cp7V67eGA8gDVgkcGBStJNRF13mV9S9K1X7qNRKSUkVmspa6CBCFUsHqw==
+
 "@types/node-fetch@^2.1.2":
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/@types/node-fetch/-/node-fetch-2.3.2.tgz#e01893b176c6fa1367743726380d65bce5d6576b"
@@ -2353,10 +2358,10 @@ csso@~2.3.1:
     clap "^1.0.9"
     source-map "^0.5.3"
 
-dat.gui@^0.7.2:
-  version "0.7.5"
-  resolved "https://registry.yarnpkg.com/dat.gui/-/dat.gui-0.7.5.tgz#ab155825b0db88729c025697ef60c97fb87bef85"
-  integrity sha512-o6RnHVUHigLqH4DwsZCbFLAQw8NMWS3GP9EL4M4oOWj7E4qGIyVopyOWzyAwCwtuaiB27hq9F0qkHSNfjsp+ZQ==
+dat.gui@^0.7.6:
+  version "0.7.6"
+  resolved "https://registry.yarnpkg.com/dat.gui/-/dat.gui-0.7.6.tgz#92182a0f2dc96c26910f888238d3839166d82f76"
+  integrity sha512-9Uqr4aQUvp9q5P2b4y6gK604HXafubOq578OmOS8mjrIkYrBP4EbQ9gz9YRXgyPh7aQi+b9H/jAG7EucmhYpSA==
 
 date-now@^0.1.4:
   version "0.1.4"

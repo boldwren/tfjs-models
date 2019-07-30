@@ -18,7 +18,16 @@ import * as posenet from '@tensorflow-models/posenet';
 import dat from 'dat.gui';
 import Stats from 'stats.js';
 
-import {drawBoundingBox, drawKeypoints, drawSkeleton, isMobile, toggleLoadingUI, tryResNetButtonName, tryResNetButtonText, updateTryResNetButtonDatGuiCss} from './demo_util';
+import {
+  drawBoundingBox,
+  drawKeypoints,
+  drawSkeleton,
+  isMobile,
+  toggleLoadingUI,
+  tryResNetButtonName,
+  tryResNetButtonText,
+  updateTryResNetButtonDatGuiCss,
+} from './demo_util';
 
 const videoWidth = 600;
 const videoHeight = 300;
@@ -32,28 +41,31 @@ let currentVideo = null;
  * Loads a the camera to be used in the demo
  *
  */
-async function setupCamera() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    throw new Error(
-        'Browser API navigator.mediaDevices.getUserMedia not available');
-  }
-
+async function setupCamera(): Promise<HTMLVideoElement> {
   if (!videos) {
     const response = await fetch('/videos/index.json');
     const index = await response.json();
-    videos = {...index.videos, ...Object.fromEntries(Object.entries(window.localStorage).map(([k, v]) => [k, JSON.parse(v)]).sort())};
+    videos = {
+      ...index.videos,
+      ...Object.fromEntries(
+        Object.entries(window.localStorage)
+          .map(([k, v]) => [k, JSON.parse(v)])
+          .sort(),
+      ),
+    };
     window.videos = videos;
   }
   // only show videos we have no data about
-  const videoUrls = Object.keys(videos).filter(k => Object.keys(videos[k]).length === 0);
-  const video = document.getElementById('video');
+  const videoUrls = Object.keys(videos).filter(
+    (k) => Object.keys(videos[k]).length === 0,
+  );
+  const video = document.getElementById('video') as HTMLVideoElement;
   video.width = videoWidth;
   video.height = videoHeight;
 
   currentVideo = videoUrls[Math.floor(videoUrls.length * Math.random())];
   video.src = currentVideo;
   video.currentTime = 20;
-
 
   return new Promise((resolve) => {
     video.onloadedmetadata = () => {
@@ -72,10 +84,12 @@ async function loadVideo() {
     // Object.fromEntries(Object.entries(window.localStorage).map(([k, v]) => [k, JSON.parse(v)]).sort())
     const prev = JSON.parse(window.localStorage.getItem(currentVideo) || '{}');
     window.localStorage.setItem(
-      currentVideo, JSON.stringify({
+      currentVideo,
+      JSON.stringify({
         ...prev,
-        ...videos[currentVideo]
-      }))
+        ...videos[currentVideo],
+      }),
+    );
     loadVideo();
   });
   return video;
@@ -83,7 +97,7 @@ async function loadVideo() {
 
 const defaultQuantBytes = 2;
 
-const defaultMobileNetMultiplier = isMobile() ? 0.50 : 0.75;
+const defaultMobileNetMultiplier = isMobile() ? 0.5 : 0.75;
 const defaultMobileNetStride = 16;
 const defaultMobileNetInputResolution = 513;
 
@@ -98,7 +112,7 @@ const guiState = {
     outputStride: defaultMobileNetStride,
     inputResolution: defaultMobileNetInputResolution,
     multiplier: defaultMobileNetMultiplier,
-    quantBytes: defaultQuantBytes
+    quantBytes: defaultQuantBytes,
   },
   singlePoseDetection: {
     minPoseConfidence: 0.1,
@@ -117,6 +131,17 @@ const guiState = {
     showBoundingBox: false,
   },
   net: null,
+  camera: null,
+  architecture: null,
+  inputResolution: null,
+  changeToInputResolution: null,
+  outputStride: null,
+  changeToOutputStride: null,
+  multiplier: null,
+  changeToMultiplier: null,
+  quantBytes: null,
+  changeToQuantBytes: null,
+  changeToArchitecture: null,
 };
 
 /**
@@ -133,7 +158,7 @@ function setupGui(cameras, net) {
 
   let architectureController = null;
   guiState[tryResNetButtonName] = function() {
-    architectureController.setValue('ResNet50')
+    architectureController.setValue('ResNet50');
   };
   gui.add(guiState, tryResNetButtonName).name(tryResNetButtonText);
   updateTryResNetButtonDatGuiCss();
@@ -141,8 +166,10 @@ function setupGui(cameras, net) {
   // The single-pose algorithm is faster and simpler but requires only one
   // person to be in the frame or results will be innaccurate. Multi-pose works
   // for more than 1 person
-  const algorithmController =
-      gui.add(guiState, 'algorithm', ['single-pose', 'multi-pose']);
+  const algorithmController = gui.add(guiState, 'algorithm', [
+    'single-pose',
+    'multi-pose',
+  ]);
 
   // The input parameters have the most effect on accuracy and speed of the
   // network
@@ -150,24 +177,26 @@ function setupGui(cameras, net) {
   // Architecture: there are a few PoseNet models varying in size and
   // accuracy. 1.01 is the largest, but will be the slowest. 0.50 is the
   // fastest, but least accurate.
-  architectureController =
-      input.add(guiState.input, 'architecture', ['MobileNetV1', 'ResNet50']);
+  architectureController = input.add(guiState.input, 'architecture', [
+    'MobileNetV1',
+    'ResNet50',
+  ]);
   guiState.architecture = guiState.input.architecture;
   // Input resolution:  Internally, this parameter affects the height and width
   // of the layers in the neural network. The higher the value of the input
   // resolution the better the accuracy but slower the speed.
   let inputResolutionController = null;
-  function updateGuiInputResolution(
-      inputResolution,
-      inputResolutionArray,
-  ) {
+  function updateGuiInputResolution(inputResolution, inputResolutionArray) {
     if (inputResolutionController) {
       inputResolutionController.remove();
     }
     guiState.inputResolution = inputResolution;
     guiState.input.inputResolution = inputResolution;
-    inputResolutionController =
-        input.add(guiState.input, 'inputResolution', inputResolutionArray);
+    inputResolutionController = input.add(
+      guiState.input,
+      'inputResolution',
+      inputResolutionArray,
+    );
     inputResolutionController.onChange(function(inputResolution) {
       guiState.changeToInputResolution = inputResolution;
     });
@@ -184,8 +213,11 @@ function setupGui(cameras, net) {
     }
     guiState.outputStride = outputStride;
     guiState.input.outputStride = outputStride;
-    outputStrideController =
-        input.add(guiState.input, 'outputStride', outputStrideArray);
+    outputStrideController = input.add(
+      guiState.input,
+      'outputStride',
+      outputStrideArray,
+    );
     outputStrideController.onChange(function(outputStride) {
       guiState.changeToOutputStride = outputStride;
     });
@@ -201,8 +233,11 @@ function setupGui(cameras, net) {
     }
     guiState.multiplier = multiplier;
     guiState.input.multiplier = multiplier;
-    multiplierController =
-        input.add(guiState.input, 'multiplier', multiplierArray);
+    multiplierController = input.add(
+      guiState.input,
+      'multiplier',
+      multiplierArray,
+    );
     multiplierController.onChange(function(multiplier) {
       guiState.changeToMultiplier = multiplier;
     });
@@ -219,8 +254,11 @@ function setupGui(cameras, net) {
     }
     guiState.quantBytes = +quantBytes;
     guiState.input.quantBytes = +quantBytes;
-    quantBytesController =
-        input.add(guiState.input, 'quantBytes', quantBytesArray);
+    quantBytesController = input.add(
+      guiState.input,
+      'quantBytes',
+      quantBytesArray,
+    );
     quantBytesController.onChange(function(quantBytes) {
       guiState.changeToQuantBytes = +quantBytes;
     });
@@ -228,13 +266,24 @@ function setupGui(cameras, net) {
 
   function updateGui() {
     if (guiState.input.architecture === 'MobileNetV1') {
-      updateGuiInputResolution(
-          defaultMobileNetInputResolution, [257, 353, 449, 513, 801]);
+      updateGuiInputResolution(defaultMobileNetInputResolution, [
+        257,
+        353,
+        449,
+        513,
+        801,
+      ]);
       updateGuiOutputStride(defaultMobileNetStride, [8, 16]);
-      updateGuiMultiplier(defaultMobileNetMultiplier, [0.50, 0.75, 1.0])
-    } else {  // guiState.input.architecture === "ResNet50"
-      updateGuiInputResolution(
-          defaultResNetInputResolution, [257, 353, 449, 513, 801]);
+      updateGuiMultiplier(defaultMobileNetMultiplier, [0.5, 0.75, 1.0]);
+    } else {
+      // guiState.input.architecture === "ResNet50"
+      updateGuiInputResolution(defaultResNetInputResolution, [
+        257,
+        353,
+        449,
+        513,
+        801,
+      ]);
       updateGuiOutputStride(defaultResNetStride, [32, 16]);
       updateGuiMultiplier(defaultResNetMultiplier, [1.0]);
     }
@@ -252,15 +301,19 @@ function setupGui(cameras, net) {
   single.add(guiState.singlePoseDetection, 'minPartConfidence', 0.0, 1.0);
 
   let multi = gui.addFolder('Multi Pose Detection');
-  multi.add(guiState.multiPoseDetection, 'maxPoseDetections')
-      .min(1)
-      .max(20)
-      .step(1);
+  multi
+    .add(guiState.multiPoseDetection, 'maxPoseDetections')
+    .min(1)
+    .max(20)
+    .step(1);
   multi.add(guiState.multiPoseDetection, 'minPoseConfidence', 0.0, 1.0);
   multi.add(guiState.multiPoseDetection, 'minPartConfidence', 0.0, 1.0);
   // nms Radius: controls the minimum distance between poses that are returned
   // defaults to 20, which is probably fine for most use cases
-  multi.add(guiState.multiPoseDetection, 'nmsRadius').min(0.0).max(40.0);
+  multi
+    .add(guiState.multiPoseDetection, 'nmsRadius')
+    .min(0.0)
+    .max(40.0);
   multi.open();
 
   let output = gui.addFolder('Output');
@@ -269,7 +322,6 @@ function setupGui(cameras, net) {
   output.add(guiState.output, 'showPoints');
   output.add(guiState.output, 'showBoundingBox');
   output.open();
-
 
   architectureController.onChange(function(architecture) {
     // if architecture is ResNet50, then show ResNet50 options
@@ -295,7 +347,7 @@ function setupGui(cameras, net) {
  * Sets up a frames per second panel on the top-left of the window
  */
 function setupFPS() {
-  stats.showPanel(0);  // 0: fps, 1: ms, 2: mb, 3+: custom
+  stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
   document.getElementById('main').appendChild(stats.dom);
 }
 
@@ -304,7 +356,7 @@ function setupFPS() {
  * happens. This function loops with a requestAnimationFrame method.
  */
 function detectPoseInRealTime(video, net) {
-  const canvas = document.getElementById('output');
+  const canvas = document.getElementById('output') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d');
 
   // since images are being fed from a webcam, we want to feed in the
@@ -340,7 +392,7 @@ function detectPoseInRealTime(video, net) {
         outputStride: guiState.outputStride,
         inputResolution: guiState.inputResolution,
         multiplier: +guiState.changeToMultiplier,
-        quantBytes: guiState.quantBytes
+        quantBytes: guiState.quantBytes,
       });
       toggleLoadingUI(false);
       guiState.multiplier = +guiState.changeToMultiplier;
@@ -356,7 +408,7 @@ function detectPoseInRealTime(video, net) {
         outputStride: +guiState.changeToOutputStride,
         inputResolution: guiState.inputResolution,
         multiplier: guiState.multiplier,
-        quantBytes: guiState.quantBytes
+        quantBytes: guiState.quantBytes,
       });
       toggleLoadingUI(false);
       guiState.outputStride = +guiState.changeToOutputStride;
@@ -372,7 +424,7 @@ function detectPoseInRealTime(video, net) {
         outputStride: guiState.outputStride,
         inputResolution: +guiState.changeToInputResolution,
         multiplier: guiState.multiplier,
-        quantBytes: guiState.quantBytes
+        quantBytes: guiState.quantBytes,
       });
       toggleLoadingUI(false);
       guiState.inputResolution = +guiState.changeToInputResolution;
@@ -388,7 +440,7 @@ function detectPoseInRealTime(video, net) {
         outputStride: guiState.outputStride,
         inputResolution: guiState.inputResolution,
         multiplier: guiState.multiplier,
-        quantBytes: guiState.changeToQuantBytes
+        quantBytes: guiState.changeToQuantBytes,
       });
       toggleLoadingUI(false);
       guiState.quantBytes = guiState.changeToQuantBytes;
@@ -405,7 +457,7 @@ function detectPoseInRealTime(video, net) {
       case 'single-pose':
         const pose = await guiState.net.estimatePoses(video, {
           flipHorizontal: flipPoseHorizontal,
-          decodingMethod: 'single-person'
+          decodingMethod: 'single-person',
         });
         poses = poses.concat(pose);
         minPoseConfidence = +guiState.singlePoseDetection.minPoseConfidence;
@@ -417,7 +469,7 @@ function detectPoseInRealTime(video, net) {
           decodingMethod: 'multi-person',
           maxDetections: guiState.multiPoseDetection.maxPoseDetections,
           scoreThreshold: guiState.multiPoseDetection.minPartConfidence,
-          nmsRadius: guiState.multiPoseDetection.nmsRadius
+          nmsRadius: guiState.multiPoseDetection.nmsRadius,
         });
 
         poses = poses.concat(all_poses);
@@ -431,7 +483,7 @@ function detectPoseInRealTime(video, net) {
     // For each pose (i.e. person) detected in an image, loop through the poses
     // and draw the resulting skeleton and keypoints if over certain confidence
     // scores
-    const goodPoses = poses.filter(({score}) => score >= minPoseConfidence)
+    const goodPoses = poses.filter(({score}) => score >= minPoseConfidence);
     goodPoses.forEach(({keypoints}) => {
       if (guiState.output.showPoints) {
         drawKeypoints(keypoints, minPartConfidence, ctx);
@@ -453,7 +505,7 @@ function detectPoseInRealTime(video, net) {
     // event instead, to avoid wasting cpu.
     requestAnimationFrame(() => setTimeout(poseDetectionFrame, 10000));
   }
-  setTimeout(poseDetectionFrame, 1000)
+  setTimeout(poseDetectionFrame, 1000);
 }
 
 /**
@@ -467,7 +519,7 @@ export async function bindPage() {
     outputStride: guiState.input.outputStride,
     inputResolution: guiState.input.inputResolution,
     multiplier: guiState.input.multiplier,
-    quantBytes: guiState.input.quantBytes
+    quantBytes: guiState.input.quantBytes,
   });
   toggleLoadingUI(false);
 
@@ -477,8 +529,9 @@ export async function bindPage() {
     video = await loadVideo();
   } catch (e) {
     let info = document.getElementById('info');
-    info.textContent = 'this browser does not support video capture,' +
-        'or this device does not have a camera';
+    info.textContent =
+      'this browser does not support video capture,' +
+      'or this device does not have a camera';
     info.style.display = 'block';
     throw e;
   }
@@ -487,8 +540,5 @@ export async function bindPage() {
   setupFPS();
   detectPoseInRealTime(video, net);
 }
-
-navigator.getUserMedia = navigator.getUserMedia ||
-    navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 // kick off the demo
 bindPage();
