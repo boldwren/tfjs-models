@@ -26,17 +26,13 @@ export function runTests(jasmine_util: any): void {
 
   Error.stackTraceLimit = Infinity;
 
-  process.on('unhandledRejection', (e) => {
+  process.on('unhandledRejection', e => {
     throw e;
   });
 
   jasmine_util.setTestEnvs([{name: 'test-cpu', backendName: 'cpu', flags: {}}]);
 
   const runner = new jasmineCtor();
-  runner.loadConfig({
-    spec_files: ['src/**/*_test.ts', '*_test.js'],
-    helpers: ['node_modules/babel-register/lib/node.js'],
-    random: false,
-  });
+  runner.loadConfig({spec_files: ['src/**/*_test.ts', '*_test.js'], random: false});
   runner.execute();
 }

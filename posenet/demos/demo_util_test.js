@@ -1,4 +1,23 @@
-const {weightedDistanceMatching} = require('./demo_util');
+// Copy-pasta from keypoints.ts
+const partNames = [
+  'nose',
+  'leftEye',
+  'rightEye',
+  'leftEar',
+  'rightEar',
+  'leftShoulder',
+  'rightShoulder',
+  'leftElbow',
+  'rightElbow',
+  'leftWrist',
+  'rightWrist',
+  'leftHip',
+  'rightHip',
+  'leftKnee',
+  'rightKnee',
+  'leftAnkle',
+  'rightAnkle',
+];
 
 const frameA = [
   {
@@ -586,6 +605,29 @@ function fillMissing(keypoints) {
         position: {x: 0, y: 0},
       },
   );
+}
+
+function weightedDistanceMatching(poseF, poseG) {
+  let confidenceSumF = 0;
+  let weightedDistanceSum = 0;
+  for (let k = 1; k < poseF.length; k++) {
+    const {
+      score: Fc,
+      part: partF,
+      position: {x: Fx, y: Fy},
+    } = poseF[k];
+    const {
+      score: Gc, // :( confidence about G's positions is ignored. This makes
+      // distance(F, G) != distance(G, F)
+      part: partG,
+      position: {x: Gx, y: Gy},
+    } = poseG[k];
+    console.assert(partF == partG);
+    confidenceSumF += Fc * Gc;
+    weightedDistanceSum += Fc * Gc * (Math.abs(Fx - Gx) + Math.abs(Fy - Gy));
+  }
+
+  return (1 / confidenceSumF) * weightedDistanceSum;
 }
 
 describe('weightedDistanceMatching', () => {
