@@ -1,5 +1,3 @@
-import {weightedDistanceMatching} from './demo_util';
-
 const frameA = [
   {
     score: 0.36523322070099634,
@@ -570,40 +568,31 @@ const frameB = [
     ],
   },
 ];
+import 'jasmine';
+import {
+  describeWithFlags,
+  NODE_ENVS,
+} from '@tensorflow/tfjs-core/dist/jasmine_util';
+import {weightedDistanceMatching} from './demo_util';
 
-describe('weightedDistanceMatching', () => {
+describeWithFlags('weightedDistanceMatching', NODE_ENVS, () => {
   it('doesnt crash', () => {
     expect(
-      weightedDistanceMatching(
-        fillMissing(frameA[0].keypoints),
-        fillMissing(frameB[0].keypoints),
-      ),
+      weightedDistanceMatching(frameA[0].keypoints, frameB[0].keypoints),
     ).toBeGreaterThan(0);
   });
   it('thinks that the A.left pose is closer to B.left than B.right', () => {
     expect(
-      weightedDistanceMatching(
-        fillMissing(frameA[0].keypoints),
-        fillMissing(frameB[1].keypoints),
-      ),
+      weightedDistanceMatching(frameA[0].keypoints, frameB[1].keypoints),
     ).toBeGreaterThan(
-      weightedDistanceMatching(
-        fillMissing(frameA[0].keypoints),
-        fillMissing(frameB[0].keypoints),
-      ),
+      weightedDistanceMatching(frameA[0].keypoints, frameB[0].keypoints),
     );
   });
   it('is symmetrical', () => {
     expect(
-      weightedDistanceMatching(
-        fillMissing(frameA[0].keypoints),
-        fillMissing(frameB[0].keypoints),
-      ),
+      weightedDistanceMatching(frameA[0].keypoints, frameB[0].keypoints),
     ).toEqual(
-      weightedDistanceMatching(
-        fillMissing(frameB[0].keypoints),
-        fillMissing(frameA[0].keypoints),
-      ),
+      weightedDistanceMatching(frameB[0].keypoints, frameA[0].keypoints),
     );
   });
 });
