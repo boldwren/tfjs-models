@@ -33,6 +33,6 @@ export function runTests(jasmine_util: any): void {
   jasmine_util.setTestEnvs([{name: 'test-cpu', backendName: 'cpu', flags: {}}]);
 
   const runner = new jasmineCtor();
-  runner.loadConfig({spec_files: ['src/**/*_test.ts', '*_test.js'], random: false});
+  runner.loadConfig({spec_files: ['src/**/*_test.ts', '*_test.ts'], random: false});
   runner.execute();
 }
