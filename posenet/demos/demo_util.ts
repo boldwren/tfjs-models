@@ -303,27 +303,32 @@ import * as VPTreeFactory from 'vptree';
 
 // TODO: I think that flatPoses might be a better data representation now
 // that things have been trained. Should I switch to that everywhere?
-export function makeSearcher(nestedPoses) {
-  const flatPoses = Object.entries(nestedPoses)
-    .map(([filename, v]) =>
-      Object.entries(v)
-        .map(([t, poses]) => poses.map((pose) => ({...pose, filename, t})))
-        .reduce((acc, val) => acc.concat(val), []),
-    )
-    .reduce((acc, val) => acc.concat(val), []);
+export class Searcher {
+  flatPoses: Array<any>;
+  vptree: any;
+  constructor(nestedPoses) {
+    this.flatPoses = Object.entries(nestedPoses)
+      .map(([filename, v]) =>
+        Object.entries(v)
+          .map(([t, poses]) => poses.map((pose) => ({...pose, filename, t})))
+          .reduce((acc, val) => acc.concat(val), []),
+      )
+      .reduce((acc, val) => acc.concat(val), []);
 
-  const vptree = VPTreeFactory.build(flatPoses, (a, b) =>
-    weightedDistanceMatching(a.keypoints, b.keypoints),
-  );
+    this.vptree = VPTreeFactory.build(this.flatPoses, (a, b) =>
+      weightedDistanceMatching(a.keypoints, b.keypoints),
+    );
+  }
 
-  const search = (pose, n) => vptree.search(pose, n).map((r) => flatPoses[r.i]);
-  const searchOtherFiles = (filename, pose, n) =>
-    search(pose, n).filter((p) => p.filename !== filename);
-
-  return {
-    search,
-    searchOtherFiles,
-    flatPoses,
-    vptree,
-  };
+  search(pose: any, n: number) {
+    return this.vptree.search(pose, n).map((r) => this.flatPoses[r.i]);
+  }
+  searchOtherFiles(filename: string, pose: any, n: number) {
+    const seen = new Set([filename]);
+    return this.search(pose, n).filter((p) => {
+      const allow = !seen.has(p.filename);
+      seen.add(p.filename);
+      return allow;
+    });
+  }
 }

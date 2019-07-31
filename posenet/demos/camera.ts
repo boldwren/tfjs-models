@@ -27,7 +27,7 @@ import {
   tryResNetButtonName,
   tryResNetButtonText,
   updateTryResNetButtonDatGuiCss,
-  makeSearcher,
+  Searcher,
 } from './demo_util';
 
 const videoWidth = 600;
@@ -38,35 +38,51 @@ const stats = new Stats();
 let videos = null;
 let currentVideo = null;
 let searcher = null;
+let searchingFor = null;
 
-async function previewRelatedVideoSegment(filename, poses) {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function exploreRelatedSegments(filename, poses) {
+  searchingFor = poses;
   if (!searcher) {
     const response = await fetch('/localstorage.json');
     const nestedPoses = await response.json();
-    searcher = makeSearcher(nestedPoses);
+    searcher = new Searcher(nestedPoses);
     window.searcher = searcher;
   }
 
-  const preview = document.getElementById('preview') as HTMLVideoElement;
-  var url: string;
-  var t: number;
+  var el;
   for (const pose of poses) {
-    const results = searcher.searchOtherFiles(filename, pose);
-    if (results.length) {
-      url = results[0].filename;
-      t = parseFloat(results[0].t);
-      break;
+    const results = searcher.searchOtherFiles(filename, pose, 100);
+    for (const result of results) {
+      if (searchingFor !== poses) {
+        console.log('Someone asked to preview something else. Returning.');
+        return;
+      }
+      const url = result.filename;
+      const t = parseFloat(result.t);
+      el = await preview(url, t);
+      await sleep(10000);
     }
   }
-  if (!url) {
-    console.log('no similar things found');
-    return;
+  if (el) {
+    if (searchingFor !== poses) {
+      console.log('Someone asked to preview something else. Returning.');
+      return;
+    }
+    console.log('pausing');
+    el.pause();
   }
+}
+async function preview(filename, timestamp): Promise<HTMLVideoElement> {
+  const preview = document.getElementById('preview') as HTMLVideoElement;
   preview.width = videoWidth;
   preview.height = videoHeight;
 
-  preview.src = url;
-  preview.currentTime = t;
+  preview.src = filename;
+  preview.currentTime = timestamp;
 
   await new Promise((resolve) => {
     preview.onloadedmetadata = () => {
@@ -74,8 +90,7 @@ async function previewRelatedVideoSegment(filename, poses) {
     };
   });
   preview.play();
-  // TODO: also render the videos[url][t] features on a canvas on top of the
-  // preview element.
+  return preview;
 }
 
 /**
@@ -111,20 +126,6 @@ async function loadVideo() {
   const video = await setupCamera();
   video.play();
 
-  video.addEventListener('ended', (event) => {
-    console.log('Video stopped');
-    // To dump localstorage, use:
-    // Object.fromEntries(Object.entries(window.localStorage).map(([k, v]) => [k, JSON.parse(v)]).sort())
-    const prev = JSON.parse(window.localStorage.getItem(currentVideo) || '{}');
-    window.localStorage.setItem(
-      currentVideo,
-      JSON.stringify({
-        ...prev,
-        ...videos[currentVideo],
-      }),
-    );
-    loadVideo();
-  });
   return video;
 }
 
@@ -529,19 +530,19 @@ function detectPoseInRealTime(video, net) {
       }
     });
 
-    if (goodPoses.length) {
-      videos[currentVideo][video.currentTime] = goodPoses;
-      previewRelatedVideoSegment(currentVideo, goodPoses);
-    }
-
     // End monitoring code for frames per second
     stats.end();
-
-    // TODO: if video element is not playing then register a listener for a play
-    // event instead, to avoid wasting cpu.
-    requestAnimationFrame(() => setTimeout(poseDetectionFrame, 10000));
+    return goodPoses;
   }
-  setTimeout(poseDetectionFrame, 1000);
+
+  video.addEventListener('ended', (event) => {
+    console.log('Video stopped');
+    loadVideo();
+  });
+  video.addEventListener('pause', async () => {
+    const poses = await poseDetectionFrame();
+    exploreRelatedSegments(currentVideo, poses);
+  });
 }
 
 /**

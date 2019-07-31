@@ -573,7 +573,7 @@ import {
   describeWithFlags,
   NODE_ENVS,
 } from '@tensorflow/tfjs-core/dist/jasmine_util';
-import {weightedDistanceMatching, makeSearcher} from './demo_util';
+import {weightedDistanceMatching, Searcher} from './demo_util';
 import * as fs from 'fs';
 
 describeWithFlags('weightedDistanceMatching', NODE_ENVS, () => {
@@ -599,11 +599,11 @@ describeWithFlags('weightedDistanceMatching', NODE_ENVS, () => {
   // TODO: verify the triangle inequality
 });
 
-describeWithFlags('makeSearcher', NODE_ENVS, () => {
+describeWithFlags('Searcher', NODE_ENVS, () => {
   const nestedPoses = JSON.parse(
     fs.readFileSync('dist/localstorage.json', 'utf8'),
   );
-  const searcher = makeSearcher(nestedPoses);
+  const searcher = new Searcher(nestedPoses);
 
   function filenames(results) {
     return [...new Set(results.map((r) => r.filename))];
