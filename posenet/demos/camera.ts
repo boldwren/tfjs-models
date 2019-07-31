@@ -106,9 +106,7 @@ async function setupCamera(): Promise<HTMLVideoElement> {
     };
     window.videos = videos;
   }
-  const videoUrls = Object.keys(videos).filter((url) =>
-    url.includes('1440P_6000K'),
-  );
+  const videoUrls = Object.keys(videos);
   const video = document.getElementById('video') as HTMLVideoElement;
   video.width = videoWidth;
   video.height = videoHeight;

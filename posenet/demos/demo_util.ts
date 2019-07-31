@@ -309,13 +309,9 @@ export class Searcher {
   constructor(nestedPoses) {
     this.flatPoses = Object.entries(nestedPoses)
       .map(([filename, v]) =>
-        filename.includes('1440P_6000K')
-          ? Object.entries(v)
-              .map(([t, poses]) =>
-                poses.map((pose) => ({...pose, filename, t})),
-              )
-              .reduce((acc, val) => acc.concat(val), [])
-          : [],
+        Object.entries(v)
+          .map(([t, poses]) => poses.map((pose) => ({...pose, filename, t})))
+          .reduce((acc, val) => acc.concat(val), []),
       )
       .reduce((acc, val) => acc.concat(val), []);
 
