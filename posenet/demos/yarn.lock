@@ -6398,6 +6398,11 @@ vm-browserify@0.0.4:
   dependencies:
     indexof "0.0.1"
 
+vptree@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/vptree/-/vptree-1.0.0.tgz#0ac457047f21da34250970a9258ea6b73283b956"
+  integrity sha1-CsRXBH8h2jQlCXCpJY6mtzKDuVY=
+
 wcwidth@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/wcwidth/-/wcwidth-1.0.1.tgz#f0b0dcf915bc5ff1528afadb2c0e17b532da2fe8"

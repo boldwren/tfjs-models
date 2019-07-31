@@ -573,7 +573,8 @@ import {
   describeWithFlags,
   NODE_ENVS,
 } from '@tensorflow/tfjs-core/dist/jasmine_util';
-import {weightedDistanceMatching} from './demo_util';
+import {weightedDistanceMatching, makeSearcher} from './demo_util';
+import * as fs from 'fs';
 
 describeWithFlags('weightedDistanceMatching', NODE_ENVS, () => {
   it('doesnt crash', () => {
@@ -594,5 +595,33 @@ describeWithFlags('weightedDistanceMatching', NODE_ENVS, () => {
     ).toEqual(
       weightedDistanceMatching(frameB[0].keypoints, frameA[0].keypoints),
     );
+  });
+  // TODO: verify the triangle inequality
+});
+
+describeWithFlags('makeSearcher', NODE_ENVS, () => {
+  const nestedPoses = JSON.parse(
+    fs.readFileSync('dist/localstorage.json', 'utf8'),
+  );
+  const searcher = makeSearcher(nestedPoses);
+
+  function filenames(results) {
+    return [...new Set(results.map((r) => r.filename))];
+  }
+  const examplePose = searcher.flatPoses[100];
+
+  it('finds a pose that is in the dataset', () => {
+    const results = searcher.search(examplePose, 10);
+    expect(results[0].filename).toBe(examplePose.filename);
+    expect(filenames(results).length).toBeGreaterThan(1);
+  });
+
+  it('finds things in other files', () => {
+    const results = searcher.searchOtherFiles(
+      examplePose.filename,
+      examplePose,
+      10,
+    );
+    expect(results[0].filename).not.toBe(examplePose.filename);
   });
 });

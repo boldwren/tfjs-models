@@ -40,7 +40,7 @@ export function isMobile() {
 
 function setDatGuiPropertyCss(propertyText, liCssString, spanCssString = '') {
   const spans = document.getElementsByClassName('property-name');
-  for (const i = 0; i < spans.length; i++) {
+  for (var i = 0; i < spans.length; i++) {
     const text = spans[i].textContent || spans[i].innerText;
     if (text == propertyText) {
       spans[i].parentNode.parentNode.style = liCssString;
@@ -257,6 +257,8 @@ export function drawOffsetVectors(
   }
 }
 
+import * as assert from 'assert';
+
 // TODO: This is horribly inefficient. There has to be a better way to do this
 function fillMissing(keypoints) {
   const indexed = {};
@@ -289,10 +291,39 @@ export function weightedDistanceMatching(poseF, poseG) {
       part: partG,
       position: {x: Gx, y: Gy},
     } = poseG[k];
-    console.assert(partF == partG);
+    assert.strictEqual(partF, partG);
     confidenceSumF += Fc * Gc;
     weightedDistanceSum += Fc * Gc * (Math.abs(Fx - Gx) + Math.abs(Fy - Gy));
   }
 
   return (1 / confidenceSumF) * weightedDistanceSum;
+}
+
+import * as VPTreeFactory from 'vptree';
+
+// TODO: I think that flatPoses might be a better data representation now
+// that things have been trained. Should I switch to that everywhere?
+export function makeSearcher(nestedPoses) {
+  const flatPoses = Object.entries(nestedPoses)
+    .map(([filename, v]) =>
+      Object.entries(v)
+        .map(([t, poses]) => poses.map((pose) => ({...pose, filename, t})))
+        .reduce((acc, val) => acc.concat(val), []),
+    )
+    .reduce((acc, val) => acc.concat(val), []);
+
+  const vptree = VPTreeFactory.build(flatPoses, (a, b) =>
+    weightedDistanceMatching(a.keypoints, b.keypoints),
+  );
+
+  const search = (pose, n) => vptree.search(pose, n).map((r) => flatPoses[r.i]);
+  const searchOtherFiles = (filename, pose, n) =>
+    search(pose, n).filter((p) => p.filename !== filename);
+
+  return {
+    search,
+    searchOtherFiles,
+    flatPoses,
+    vptree,
+  };
 }

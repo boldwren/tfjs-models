@@ -27,6 +27,7 @@ import {
   tryResNetButtonName,
   tryResNetButtonText,
   updateTryResNetButtonDatGuiCss,
+  makeSearcher,
 } from './demo_util';
 
 const videoWidth = 600;
@@ -36,6 +37,46 @@ const stats = new Stats();
 // holds {video_url: {time: KeyPoints}}
 let videos = null;
 let currentVideo = null;
+let searcher = null;
+
+async function previewRelatedVideoSegment(filename, poses) {
+  if (!searcher) {
+    const response = await fetch('/localstorage.json');
+    const nestedPoses = await response.json();
+    searcher = makeSearcher(nestedPoses);
+    window.searcher = searcher;
+  }
+
+  const preview = document.getElementById('preview') as HTMLVideoElement;
+  var url: string;
+  var t: number;
+  for (const pose of poses) {
+    const results = searcher.searchOtherFiles(filename, pose);
+    if (results.length) {
+      url = results[0].filename;
+      t = parseFloat(results[0].t);
+      break;
+    }
+  }
+  if (!url) {
+    console.log('no similar things found');
+    return;
+  }
+  preview.width = videoWidth;
+  preview.height = videoHeight;
+
+  preview.src = url;
+  preview.currentTime = t;
+
+  await new Promise((resolve) => {
+    preview.onloadedmetadata = () => {
+      resolve();
+    };
+  });
+  preview.play();
+  // TODO: also render the videos[url][t] features on a canvas on top of the
+  // preview element.
+}
 
 /**
  * Loads a the camera to be used in the demo
@@ -47,18 +88,10 @@ async function setupCamera(): Promise<HTMLVideoElement> {
     const index = await response.json();
     videos = {
       ...index.videos,
-      ...Object.fromEntries(
-        Object.entries(window.localStorage)
-          .map(([k, v]) => [k, JSON.parse(v)])
-          .sort(),
-      ),
     };
     window.videos = videos;
   }
-  // only show videos we have no data about
-  const videoUrls = Object.keys(videos).filter(
-    (k) => Object.keys(videos[k]).length === 0,
-  );
+  const videoUrls = Object.keys(videos);
   const video = document.getElementById('video') as HTMLVideoElement;
   video.width = videoWidth;
   video.height = videoHeight;
@@ -496,7 +529,10 @@ function detectPoseInRealTime(video, net) {
       }
     });
 
-    videos[currentVideo][video.currentTime] = goodPoses;
+    if (goodPoses.length) {
+      videos[currentVideo][video.currentTime] = goodPoses;
+      previewRelatedVideoSegment(currentVideo, goodPoses);
+    }
 
     // End monitoring code for frames per second
     stats.end();
