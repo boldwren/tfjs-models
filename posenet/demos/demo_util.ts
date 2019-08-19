@@ -319,6 +319,9 @@ export class Searcher {
       weightedDistanceMatching(a.keypoints, b.keypoints),
     );
   }
+  distance(a, b) {
+    return weightedDistanceMatching(a.keypoints, b.keypoints)
+  }
 
   search(pose: any, n: number) {
     return this.vptree.search(pose, n).map((r) => this.flatPoses[r.i]);

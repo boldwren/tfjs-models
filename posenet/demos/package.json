@@ -11,7 +11,8 @@
   "dependencies": {
     "@tensorflow/tfjs-node": "^1.2.7",
     "botkit": "^4.5.0",
-    "canvas": "^2.6.0"
+    "canvas": "^2.6.0",
+    "glob": "^7.1.4"
   },
   "scripts": {
     "watch": "cross-env NODE_ENV=development parcel index.html --no-hmr --open ",
@@ -43,7 +44,7 @@
     "eslint-config-google": "^0.9.1",
     "jasmine": "^3.2.0",
     "jasmine-core": "~3.1.0",
-    "parcel-bundler": "~1.10.3",
+    "parcel-bundler": "~1.11.0",
     "rollup": "^1.19.4",
     "seedrandom": "~2.4.3",
     "stats.js": "^0.17.0",

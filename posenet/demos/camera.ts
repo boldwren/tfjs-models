@@ -47,20 +47,21 @@ function sleep(ms) {
 async function exploreRelatedSegments(filename, poses) {
   searchingFor = poses;
   if (!searcher) {
-    const response = await fetch('/localstorage.json');
-    const nestedPoses = await response.json();
-    searcher = new Searcher(nestedPoses);
+    searcher = new Searcher(videos);
     window.searcher = searcher;
   }
 
   var el;
   for (const pose of poses) {
+    console.log('searching for pose with score', pose.score)
+
     const results = searcher.searchOtherFiles(filename, pose, 100);
     for (const result of results) {
       if (searchingFor !== poses) {
         console.log('Someone asked to preview something else. Returning.');
         return;
       }
+      console.log("result with score and distance", result.score, searcher.distance(pose, result))
       const url = result.filename;
       const t = parseFloat(result.t);
       el = await preview(url, t);
@@ -99,10 +100,10 @@ async function preview(filename, timestamp): Promise<HTMLVideoElement> {
  */
 async function setupCamera(): Promise<HTMLVideoElement> {
   if (!videos) {
-    const response = await fetch('/videos/index.json');
+    const response = await fetch('/data/indexed.json');
     const index = await response.json();
     videos = {
-      ...index.videos,
+      ...index,
     };
     window.videos = videos;
   }

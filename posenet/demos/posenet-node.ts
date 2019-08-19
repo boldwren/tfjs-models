@@ -2,16 +2,7 @@ const tf = require('@tensorflow/tfjs-node');
 const posenet = require('@tensorflow-models/posenet');
 const {createCanvas, loadImage} = require('canvas');
 const fs = require('fs')
-
-import {
-  drawBoundingBox,
-  drawKeypoints,
-  drawSkeleton,
-} from './demo_util';
-
-const imageScaleFactor = 0.5;
-const outputStride = 16;
-const flipHorizontal = false;
+const glob = require('glob')
 
 const defaultQuantBytes = 2;
 
@@ -27,48 +18,35 @@ const modelConfig = {
   quantBytes: defaultQuantBytes,
 };
 
-
-/**
- * Draws a pose if it passes a minimum confidence onto a canvas.
- * Only the pose's keypoints that pass a minPartConfidence are drawn.
- */
-function drawResults(canvas, poses, minPartConfidence, minPoseConfidence) {
-  const ctx = canvas.getContext('2d');
-  poses.forEach((pose) => {
-    if (pose.score >= minPoseConfidence) {
-        drawKeypoints(pose.keypoints, minPartConfidence, ctx);
-
-        drawSkeleton(pose.keypoints, minPartConfidence, ctx);
-
-        drawBoundingBox(pose.keypoints, ctx);
-    }
-  });
-}
-
 const tryModel = async () => {
-  console.log('start');
   const net = await posenet.load(modelConfig);
-  const img = await loadImage('./test.jpg');
-  const canvas = createCanvas(img.width, img.height);
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0);
-  const input = tf.browser.fromPixels(canvas);
 
-  let poses = await net.estimatePoses(input, {
-    flipHorizontal: false,
-    decodingMethod: 'multi-person',
-    maxDetections: 6,
-    scoreThreshold: 0.15,
-    nmsRadius: 30,
-  });
+  glob(process.argv[2] + '*.jpeg', async (_err, files) => {
+    const results = {}
+    let canvas;
+    let ctx;
 
-  console.log(poses);
-  drawResults(canvas, poses, 0.1, 0.15)
-  let out = fs.createWriteStream('./out.png')
-  let stream = canvas.pngStream('image/jpeg')
-  stream.on('data', (chunk) => out.write(chunk))
+    for (const filename of files) {
+      const img = await loadImage(filename);
+      if (!canvas) {
+        canvas = createCanvas(img.width, img.height);
+        ctx = canvas.getContext('2d');
+      }
+      ctx.drawImage(img, 0, 0);
+      const input = tf.browser.fromPixels(canvas);
+      let poses = await net.estimatePoses(input, {
+        flipHorizontal: false,
+        decodingMethod: 'multi-person',
+        maxDetections: 6,
+        scoreThreshold: 0.15,
+        nmsRadius: 30,
+      });
+      results[filename] = poses;
+    }
+    console.log(JSON.stringify(results));
 
-  console.log('end');
+  })
+
 };
 
 tryModel();
