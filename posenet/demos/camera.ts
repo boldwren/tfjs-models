@@ -45,6 +45,9 @@ function sleep(ms) {
 }
 
 async function exploreRelatedSegments(filename, poses) {
+  const canvas = document.getElementById('output') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d');
+
   searchingFor = poses;
   if (!searcher) {
     searcher = new Searcher(videos);
@@ -62,6 +65,8 @@ async function exploreRelatedSegments(filename, poses) {
         return;
       }
       console.log("result with score and distance", result.score, searcher.distance(pose, result))
+
+      drawKeypoints(result.keypoints, 0.1, ctx, 1, 'green');
       const url = result.filename;
       const t = parseFloat(result.t);
       el = await preview(url, t);

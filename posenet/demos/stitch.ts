@@ -29,18 +29,36 @@ async function stitch(featuresFilename, keyframesFilename) {
         frameFilename.replace('dist/', '').split('.d/keyframe-');
     const ts = keyframeTimes[parseFloat(rest.replace('.jpeg', ''))]
     result[videoFilename] = result[videoFilename] || {}
-    result[videoFilename][ts] = features[frameFilename].filter(pose => pose.score > 0.5)
+    result[videoFilename][ts] = features[frameFilename]
+                                    .filter(pose => pose.score > 0.5)
+                                    // ugh! all of my examples happen to be ~2880x1440.
+                                    // I should really coerce everything so that xMax is 1
+                                    // and yMax is ~= 0.5.
+                                    .map(pose => ({
+                                           ...pose,
+                                           keypoints: pose.keypoints.map(
+                                               p => ({
+                                                 ...p,
+                                                 position: {
+                                                   x: p.position.x * 600 / 2880,
+                                                   y: p.position.y * 300 / 1440
+                                                 }
+                                               }))
+                                         }))
   }
   return result
 }
 
 async function main(filenames) {
-  let result = {}
+  let result = {};
   for (const filename of filenames) {
     const featuresFilename = filename + '.d/poses.json'
     const keyframesFilename = filename + '.keyframes'
-    
-    result = {...result, ...(await stitch(featuresFilename, keyframesFilename))}
+
+    result = {
+      ...result,
+      ...(await stitch(featuresFilename, keyframesFilename))
+    }
   }
 
   console.log(JSON.stringify(result))
