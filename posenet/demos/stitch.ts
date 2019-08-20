@@ -1,6 +1,11 @@
 import {promises as fs} from 'fs';
+const glob = require('glob')
 
-async function stitch(featuresFilename, keyframesFilename) {
+async function stitch(filename, staticRootPath, tempDirPath) {
+
+  const featuresFilename = tempDirPath + filename + '.d/poses.json'
+  const keyframesFilename = tempDirPath + filename + '.d/keyframes.list'
+
   const featuresJSON = (await fs.readFile(featuresFilename)).toString();
   const features = JSON.parse(featuresJSON);
 
@@ -11,57 +16,54 @@ async function stitch(featuresFilename, keyframesFilename) {
 
   // ffmpeg's jpeg filenames start with 00001, so add some padding.
   const keyframeTimes = [0];
-
-  for (let i = 0; i < keyframesLines.length - 3; i += 3) {
-    if (keyframesLines[i] != '[FRAME]') {
-      throw new Error(keyframesLines[i])
+  let inFrameBlock = 0;
+  for (let i = 0; i < keyframesLines.length; i += 1) {
+    if (keyframesLines[i] == '[FRAME]') {
+      inFrameBlock += 1
+    } else if (keyframesLines[i] == '[/FRAME]') {
+      inFrameBlock -= 1
+    } else if (keyframesLines[i].startsWith('pkt_pts_time=')) {
+      if (inFrameBlock != 1) {
+        throw new Error(`frame blocks are not balanced: ${keyframesFilename}:${i}`)
+      }
+      keyframeTimes.push(
+        parseFloat(keyframesLines[i].replace('pkt_pts_time=', '')))
     }
-    keyframeTimes.push(
-        parseFloat(keyframesLines[i + 1].replace('pkt_pts_time=', '')))
-    if (keyframesLines[i + 2] != '[/FRAME]') {
-      throw new Error(keyframesLines[i + 2])
-    }
+  }
+  if (inFrameBlock != 0) {
+    throw new Error(`frame blocks are not balanced at end: ${keyframesFilename}`)
   }
 
   const result = {};
   for (const frameFilename in features) {
-    const [videoFilename, rest] =
-        frameFilename.replace('dist/', '').split('.d/keyframe-');
+    const [tempDirName, rest] =
+        frameFilename.replace(staticRootPath, '').split('/keyframe-');
+    const videoFilename = filename.replace(staticRootPath, '');
+    if (tempDirName.indexOf(videoFilename) == -1){
+      throw new Error(`${tempDirName} does not contain ${videoFilename}`)
+    }
     const ts = keyframeTimes[parseFloat(rest.replace('.jpeg', ''))]
     result[videoFilename] = result[videoFilename] || {}
     result[videoFilename][ts] = features[frameFilename]
                                     .filter(pose => pose.score > 0.5)
-                                    // ugh! all of my examples happen to be ~2880x1440.
-                                    // I should really coerce everything so that xMax is 1
-                                    // and yMax is ~= 0.5.
-                                    .map(pose => ({
-                                           ...pose,
-                                           keypoints: pose.keypoints.map(
-                                               p => ({
-                                                 ...p,
-                                                 position: {
-                                                   x: p.position.x * 600 / 2880,
-                                                   y: p.position.y * 300 / 1440
-                                                 }
-                                               }))
-                                         }))
   }
   return result
 }
 
-async function main(filenames) {
+function main(videoGlob, staticRootPath, tempDirPath){
   let result = {};
-  for (const filename of filenames) {
-    const featuresFilename = filename + '.d/poses.json'
-    const keyframesFilename = filename + '.keyframes'
 
-    result = {
-      ...result,
-      ...(await stitch(featuresFilename, keyframesFilename))
+  glob(videoGlob, async (_err, filenames) => {
+    for (const filename of filenames) {
+      result = {
+        ...result,
+        ...(await stitch(filename, staticRootPath, tempDirPath))
+      }
     }
-  }
 
-  console.log(JSON.stringify(result))
+    console.log(JSON.stringify(result))
+  })
 }
 
-main(process.argv.slice(2))
+
+main(process.argv[2], process.argv[3], process.argv[4])

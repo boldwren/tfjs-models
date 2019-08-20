@@ -65,8 +65,9 @@ async function exploreRelatedSegments(filename, poses) {
         return;
       }
       console.log("result with score and distance", result.score, searcher.distance(pose, result))
+      console.log("at", result.t, result.filename)
 
-      drawKeypoints(result.keypoints, 0.1, ctx, 1, 'green');
+      drawKeypoints(result.keypoints, 0.1, ctx, videoWidth, 'green');
       const url = result.filename;
       const t = parseFloat(result.t);
       el = await preview(url, t);
@@ -105,7 +106,7 @@ async function preview(filename, timestamp): Promise<HTMLVideoElement> {
  */
 async function setupCamera(): Promise<HTMLVideoElement> {
   if (!videos) {
-    const response = await fetch('/data/indexed.json');
+    const response = await fetch('/volume/indexed.json');
     const index = await response.json();
     videos = {
       ...index,
@@ -395,7 +396,7 @@ function setupFPS() {
  * Feeds an image to posenet to estimate poses - this is where the magic
  * happens. This function loops with a requestAnimationFrame method.
  */
-function detectPoseInRealTime(video, net) {
+function detectPoseInRealTime(video: HTMLVideoElement, net) {
   const canvas = document.getElementById('output') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d');
 
@@ -512,6 +513,18 @@ function detectPoseInRealTime(video, net) {
           nmsRadius: guiState.multiPoseDetection.nmsRadius,
         });
 
+        // scale the keypoints so that xMax == 1
+        all_poses = all_poses.map(pose => ({
+          ...pose,
+          keypoints: pose.keypoints.map(
+              p => ({
+                ...p,
+                position: {
+                  x: p.position.x / videoWidth,
+                  y: p.position.y / videoWidth,
+                }
+              }))
+        }));
         poses = poses.concat(all_poses);
         minPoseConfidence = +guiState.multiPoseDetection.minPoseConfidence;
         minPartConfidence = +guiState.multiPoseDetection.minPartConfidence;
@@ -526,13 +539,13 @@ function detectPoseInRealTime(video, net) {
     const goodPoses = poses.filter(({score}) => score >= minPoseConfidence);
     goodPoses.forEach(({keypoints}) => {
       if (guiState.output.showPoints) {
-        drawKeypoints(keypoints, minPartConfidence, ctx);
+        drawKeypoints(keypoints, minPartConfidence, ctx, videoWidth);
       }
       if (guiState.output.showSkeleton) {
-        drawSkeleton(keypoints, minPartConfidence, ctx);
+        drawSkeleton(keypoints, minPartConfidence, ctx, videoWidth);
       }
       if (guiState.output.showBoundingBox) {
-        drawBoundingBox(keypoints, ctx);
+        drawBoundingBox(keypoints, ctx, videoWidth);
       }
     });
 
@@ -580,7 +593,7 @@ export async function bindPage() {
   }
 
   setupGui([], net);
-  setupFPS();
+  // setupFPS();
   detectPoseInRealTime(video, net);
 }
 // kick off the demo

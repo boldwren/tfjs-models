@@ -140,14 +140,14 @@ export function drawKeypoints(keypoints, minConfidence, ctx, scale = 1, color = 
  * in an image, the bounding box will begin at the nose and extend to one of
  * ankles
  */
-export function drawBoundingBox(keypoints, ctx) {
+export function drawBoundingBox(keypoints, ctx, scale = 1) {
   const boundingBox = posenet.getBoundingBox(keypoints);
 
   ctx.rect(
-    boundingBox.minX,
-    boundingBox.minY,
-    boundingBox.maxX - boundingBox.minX,
-    boundingBox.maxY - boundingBox.minY,
+    scale * boundingBox.minX,
+    scale * boundingBox.minY,
+    scale * (boundingBox.maxX - boundingBox.minX),
+    scale * (boundingBox.maxY - boundingBox.minY),
   );
 
   ctx.strokeStyle = boundingBoxColor;

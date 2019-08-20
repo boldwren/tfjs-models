@@ -41,7 +41,18 @@ const tryModel = async () => {
         scoreThreshold: 0.15,
         nmsRadius: 30,
       });
-      results[filename] = poses;
+      // scale the keypoints so that xMax == 1
+      results[filename] = poses.map(pose => ({
+        ...pose,
+        keypoints: pose.keypoints.map(
+            p => ({
+              ...p,
+              position: {
+                x: p.position.x / img.width,
+                y: p.position.y / img.width,
+              }
+            }))
+      }));
     }
     console.log(JSON.stringify(results));
 
