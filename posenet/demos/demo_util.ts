@@ -301,12 +301,21 @@ export function weightedDistanceMatching(poseF, poseG) {
 
 import * as VPTreeFactory from 'vptree';
 
+type Pose = {
+  score: number,
+  keypoints: Array<posenet.Keypoint>,
+  filename?: string,
+}
+
 // TODO: I think that flatPoses might be a better data representation now
 // that things have been trained. Should I switch to that everywhere?
 export class Searcher {
+  // {filename: {string(timestamp): [Pose, ...]}}
+  nestedPoses: Map<string, Map<string, Array<Pose>>>
   flatPoses: Array<any>;
   vptree: any;
   constructor(nestedPoses) {
+    this.nestedPoses = nestedPoses;
     this.flatPoses = Object.entries(nestedPoses)
       .map(([filename, v]) =>
         Object.entries(v)
@@ -333,5 +342,16 @@ export class Searcher {
       seen.add(p.filename);
       return allow;
     });
+  }
+  findPreviousKeyframe(filename: string, currentTime: number): Array<Pose> {
+    // This turns out not to be performance critical, so I'm okay with it
+    // being a bit slow.
+    const frames = this.nestedPoses[filename];
+    // biggest first
+    const sortedTimes = Object.keys(frames).map(parseFloat).sort((a, b) => b - a);
+    const earlierTime = sortedTimes.find(t => (t <= currentTime && frames[t].length))
+    // TODO: check that the round-trip from string -> float -> string can't
+    // fuck me up.
+    return frames[earlierTime]
   }
 }

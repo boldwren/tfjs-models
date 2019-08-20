@@ -113,6 +113,10 @@ async function setupCamera(): Promise<HTMLVideoElement> {
     };
     window.videos = videos;
   }
+  if (!searcher) {
+    searcher = new Searcher(videos);
+    window.searcher = searcher;
+  }
   const videoUrls = Object.keys(videos);
   const video = document.getElementById('video') as HTMLVideoElement;
   video.width = videoWidth;
@@ -505,29 +509,32 @@ function detectPoseInRealTime(video: HTMLVideoElement, net) {
         minPartConfidence = +guiState.singlePoseDetection.minPartConfidence;
         break;
       case 'multi-pose':
-        let all_poses = await guiState.net.estimatePoses(video, {
-          flipHorizontal: flipPoseHorizontal,
-          decodingMethod: 'multi-person',
-          maxDetections: guiState.multiPoseDetection.maxPoseDetections,
-          scoreThreshold: guiState.multiPoseDetection.minPartConfidence,
-          nmsRadius: guiState.multiPoseDetection.nmsRadius,
-        });
+        // let all_poses = await guiState.net.estimatePoses(video, {
+        //   flipHorizontal: flipPoseHorizontal,
+        //   decodingMethod: 'multi-person',
+        //   maxDetections: guiState.multiPoseDetection.maxPoseDetections,
+        //   scoreThreshold: guiState.multiPoseDetection.minPartConfidence,
+        //   nmsRadius: guiState.multiPoseDetection.nmsRadius,
+        // });
 
-        // scale the keypoints so that xMax == 1
-        all_poses = all_poses.map(pose => ({
-          ...pose,
-          keypoints: pose.keypoints.map(
-              p => ({
-                ...p,
-                position: {
-                  x: p.position.x / videoWidth,
-                  y: p.position.y / videoWidth,
-                }
-              }))
-        }));
-        poses = poses.concat(all_poses);
+        // // scale the keypoints so that xMax == 1
+        // all_poses = all_poses.map(pose => ({
+        //   ...pose,
+        //   keypoints: pose.keypoints.map(
+        //       p => ({
+        //         ...p,
+        //         position: {
+        //           x: p.position.x / videoWidth,
+        //           y: p.position.y / videoWidth,
+        //         }
+        //       }))
+        // }));
+        // poses = poses.concat(all_poses);
         minPoseConfidence = +guiState.multiPoseDetection.minPoseConfidence;
         minPartConfidence = +guiState.multiPoseDetection.minPartConfidence;
+        
+        // TODO: parse video.src.
+        poses = searcher.findPreviousKeyframe(currentVideo, video.currentTime);
         break;
     }
 
@@ -536,7 +543,10 @@ function detectPoseInRealTime(video: HTMLVideoElement, net) {
     // For each pose (i.e. person) detected in an image, loop through the poses
     // and draw the resulting skeleton and keypoints if over certain confidence
     // scores
+    console.log(poses);
     const goodPoses = poses.filter(({score}) => score >= minPoseConfidence);
+    console.log(goodPoses);
+
     goodPoses.forEach(({keypoints}) => {
       if (guiState.output.showPoints) {
         drawKeypoints(keypoints, minPartConfidence, ctx, videoWidth);
