@@ -1,0 +1,2 @@
+dist/volume/*/*.mp4 filter=lfs diff=lfs merge=lfs -text
+dist/volume/indexed.json filter=lfs diff=lfs merge=lfs -text
