@@ -11,3 +11,6 @@ dist/
 .rpt2_cache/
 
 *.pyc
+
+# Local Netlify folder
+.netlify

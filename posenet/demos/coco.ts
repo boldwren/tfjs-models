@@ -26,6 +26,7 @@ import {
   drawSkeleton,
   renderImageToCanvas,
 } from './demo_util';
+import { ModelConfig } from '@tensorflow-models/posenet/dist/posenet_model';
 
 // clang-format on
 
@@ -201,7 +202,7 @@ let guiState = {
     inputResolution: defaultMobileNetInputResolution,
     multiplier: defaultMobileNetMultiplier,
     quantBytes: defaultQuantBytes,
-  },
+  } as ModelConfig,
   image: 'tennis_in_crowd.jpg',
   multiPoseDetection: {
     minPartConfidence: 0.1,

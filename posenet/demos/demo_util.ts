@@ -39,9 +39,9 @@ export function isMobile() {
 }
 
 function setDatGuiPropertyCss(propertyText, liCssString, spanCssString = '') {
-  var spans = document.getElementsByClassName('property-name');
+  const spans = document.getElementsByClassName('property-name');
   for (var i = 0; i < spans.length; i++) {
-    var text = spans[i].textContent || spans[i].innerText;
+    const text = spans[i].textContent || spans[i].innerText;
     if (text == propertyText) {
       spans[i].parentNode.parentNode.style = liCssString;
       if (spanCssString !== '') {
@@ -53,15 +53,20 @@ function setDatGuiPropertyCss(propertyText, liCssString, spanCssString = '') {
 
 export function updateTryResNetButtonDatGuiCss() {
   setDatGuiPropertyCss(
-      tryResNetButtonText, tryResNetButtonBackgroundCss,
-      tryResNetButtonTextCss);
+    tryResNetButtonText,
+    tryResNetButtonBackgroundCss,
+    tryResNetButtonTextCss,
+  );
 }
 
 /**
  * Toggles between the loading UI and the main canvas UI.
  */
 export function toggleLoadingUI(
-    showLoadingUI, loadingDivId = 'loading', mainDivId = 'main') {
+  showLoadingUI,
+  loadingDivId = 'loading',
+  mainDivId = 'main',
+) {
   if (showLoadingUI) {
     document.getElementById(loadingDivId).style.display = 'block';
     document.getElementById(mainDivId).style.display = 'none';
@@ -98,20 +103,26 @@ export function drawSegment([ay, ax], [by, bx], color, scale, ctx) {
  * Draws a pose skeleton by looking up all adjacent keypoints/joints
  */
 export function drawSkeleton(keypoints, minConfidence, ctx, scale = 1) {
-  const adjacentKeyPoints =
-      posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+  const adjacentKeyPoints = posenet.getAdjacentKeyPoints(
+    keypoints,
+    minConfidence,
+  );
 
   adjacentKeyPoints.forEach((keypoints) => {
     drawSegment(
-        toTuple(keypoints[0].position), toTuple(keypoints[1].position), color,
-        scale, ctx);
+      toTuple(keypoints[0].position),
+      toTuple(keypoints[1].position),
+      color,
+      scale,
+      ctx,
+    );
   });
 }
 
 /**
  * Draw pose keypoints onto a canvas
  */
-export function drawKeypoints(keypoints, minConfidence, ctx, scale = 1) {
+export function drawKeypoints(keypoints, minConfidence, ctx, scale = 1, color = 'aqua') {
   for (let i = 0; i < keypoints.length; i++) {
     const keypoint = keypoints[i];
 
@@ -129,12 +140,15 @@ export function drawKeypoints(keypoints, minConfidence, ctx, scale = 1) {
  * in an image, the bounding box will begin at the nose and extend to one of
  * ankles
  */
-export function drawBoundingBox(keypoints, ctx) {
+export function drawBoundingBox(keypoints, ctx, scale = 1) {
   const boundingBox = posenet.getBoundingBox(keypoints);
 
   ctx.rect(
-      boundingBox.minX, boundingBox.minY, boundingBox.maxX - boundingBox.minX,
-      boundingBox.maxY - boundingBox.minY);
+    scale * boundingBox.minX,
+    scale * boundingBox.minY,
+    scale * (boundingBox.maxX - boundingBox.minX),
+    scale * (boundingBox.maxY - boundingBox.minY),
+  );
 
   ctx.strokeStyle = boundingBoxColor;
   ctx.stroke();
@@ -212,9 +226,17 @@ function drawPoints(ctx, points, radius, color) {
  * https://medium.com/tensorflow/real-time-human-pose-estimation-in-the-browser-with-tensorflow-js-7dd0bc881cd5
  */
 export function drawOffsetVectors(
-    heatMapValues, offsets, outputStride, scale = 1, ctx) {
-  const offsetPoints =
-      posenet.singlePose.getOffsetPoints(heatMapValues, outputStride, offsets);
+  heatMapValues,
+  offsets,
+  outputStride,
+  scale = 1,
+  ctx,
+) {
+  const offsetPoints = posenet.singlePose.getOffsetPoints(
+    heatMapValues,
+    outputStride,
+    offsets,
+  );
 
   const heatmapData = heatMapValues.buffer().values;
   const offsetPointsData = offsetPoints.buffer().values;
@@ -226,6 +248,110 @@ export function drawOffsetVectors(
     const offsetPointX = offsetPointsData[i + 1];
 
     drawSegment(
-        [heatmapY, heatmapX], [offsetPointY, offsetPointX], color, scale, ctx);
+      [heatmapY, heatmapX],
+      [offsetPointY, offsetPointX],
+      color,
+      scale,
+      ctx,
+    );
+  }
+}
+
+import * as assert from 'assert';
+
+// TODO: This is horribly inefficient. There has to be a better way to do this
+function fillMissing(keypoints) {
+  const indexed = {};
+  for (const point of keypoints) {
+    indexed[point.part] = point;
+  }
+
+  return posenet.partNames.map(
+    (part) =>
+      indexed[part] || {
+        score: 0,
+        part: part,
+        position: {x: 0, y: 0},
+      },
+  );
+}
+
+export function weightedDistanceMatching(poseF, poseG) {
+  let confidenceSumF = 0;
+  let weightedDistanceSum = 0;
+  for (let k = 1; k < poseF.length; k++) {
+    const {
+      score: Fc,
+      part: partF,
+      position: {x: Fx, y: Fy},
+    } = poseF[k];
+    const {
+      score: Gc, // :( confidence about G's positions is ignored. This makes
+      // distance(F, G) != distance(G, F)
+      part: partG,
+      position: {x: Gx, y: Gy},
+    } = poseG[k];
+    assert.strictEqual(partF, partG);
+    confidenceSumF += Fc * Gc;
+    weightedDistanceSum += Fc * Gc * (Math.abs(Fx - Gx) + Math.abs(Fy - Gy));
+  }
+
+  return (1 / confidenceSumF) * weightedDistanceSum;
+}
+
+import * as VPTreeFactory from 'vptree';
+
+type Pose = {
+  score: number,
+  keypoints: Array<posenet.Keypoint>,
+  filename?: string,
+}
+
+// TODO: I think that flatPoses might be a better data representation now
+// that things have been trained. Should I switch to that everywhere?
+export class Searcher {
+  // {filename: {string(timestamp): [Pose, ...]}}
+  nestedPoses: Map<string, Map<string, Array<Pose>>>
+  flatPoses: Array<any>;
+  vptree: any;
+  constructor(nestedPoses) {
+    this.nestedPoses = nestedPoses;
+    this.flatPoses = Object.entries(nestedPoses)
+      .map(([filename, v]) =>
+        Object.entries(v)
+          .map(([t, poses]) => poses.map((pose) => ({...pose, filename, t})))
+          .reduce((acc, val) => acc.concat(val), []),
+      )
+      .reduce((acc, val) => acc.concat(val), []);
+
+    this.vptree = VPTreeFactory.build(this.flatPoses, (a, b) =>
+      weightedDistanceMatching(a.keypoints, b.keypoints),
+    );
+  }
+  distance(a, b) {
+    return weightedDistanceMatching(a.keypoints, b.keypoints)
+  }
+
+  search(pose: any, n: number) {
+    return this.vptree.search(pose, n).map((r) => this.flatPoses[r.i]);
+  }
+  searchOtherFiles(filename: string, pose: any, n: number) {
+    const seen = new Set([filename]);
+    return this.search(pose, n).filter((p) => {
+      const allow = !seen.has(p.filename);
+      seen.add(p.filename);
+      return allow;
+    });
+  }
+  findPreviousKeyframe(filename: string, currentTime: number): Array<Pose> {
+    // This turns out not to be performance critical, so I'm okay with it
+    // being a bit slow.
+    const frames = this.nestedPoses[filename];
+    // biggest first
+    const sortedTimes = Object.keys(frames).map(parseFloat).sort((a, b) => b - a);
+    const earlierTime = sortedTimes.find(t => (t <= currentTime && frames[t].length))
+    // TODO: check that the round-trip from string -> float -> string can't
+    // fuck me up.
+    return frames[earlierTime]
   }
 }
